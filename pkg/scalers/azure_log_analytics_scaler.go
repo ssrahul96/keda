@@ -275,7 +275,6 @@ func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	receivedMetric, err := s.getMetricData(ctx)
-
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %w", s.name, s.namespace, err)
 	}
@@ -316,6 +315,9 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		tokenInfo, _ = getTokenFromCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider))
 	}
+
+	s.logger.V(1).Info("podIdentifier", s.metadata.podIdentity.Provider)
+	s.logger.V(1).Info("getAccessToken", FormatJson(tokenInfo))
 
 	if currentTimeSec+30 > tokenInfo.ExpiresOn {
 		newTokenInfo, err := s.refreshAccessToken(ctx)
@@ -448,7 +450,6 @@ func parseTableValueToFloat64(value interface{}, dataType string) (float64, erro
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken(ctx context.Context) (tokenData, error) {
 	tokenInfo, err := s.getAuthorizationToken(ctx)
-
 	if err != nil {
 		return tokenData{}, err
 	}
@@ -485,6 +486,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 			return tokenData{}, nil
 		}
 
+		s.logger.V(1).Info("getAuthorizationToken", FormatJson(aadToken))
 		expiresOn := aadToken.ExpiresOnTimeObject.Unix()
 		if err != nil {
 			return tokenData{}, nil
@@ -636,10 +638,14 @@ func setTokenInCache(clientID string, clientSecret string, tokenInfo tokenData) 
 func getHash(clientID string, clientSecret string) (string, error) {
 	sha256Hash := sha256.New()
 	_, err := fmt.Fprintf(sha256Hash, "%s|%s", clientID, clientSecret)
-
 	if err != nil {
 		return "", err
 	}
 
 	return base64.StdEncoding.EncodeToString(sha256Hash.Sum(nil)), nil
+}
+
+func FormatJson(class interface{}) string {
+	s, _ := json.MarshalIndent(class, "", "\t")
+	return string(s)
 }
