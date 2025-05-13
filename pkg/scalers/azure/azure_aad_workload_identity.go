@@ -18,6 +18,7 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -44,10 +45,12 @@ const (
 	azureAuthrityHostEnv       = "AZURE_AUTHORITY_HOST"
 )
 
-var DefaultClientID string
-var TenantID string
-var TokenFilePath string
-var AuthorityHost string
+var (
+	DefaultClientID string
+	TenantID        string
+	TokenFilePath   string
+	AuthorityHost   string
+)
 
 func init() {
 	DefaultClientID = os.Getenv(azureClientIDEnv)
@@ -76,8 +79,15 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource s
 		return signedAssertion, nil
 	})
 
+	fmt.Println("signedAssertion", signedAssertion)
+	fmt.Println("AuthorityHost", AuthorityHost)
+	fmt.Println("TenantID", TenantID)
+	fmt.Println("clientID", clientID)
+	fmt.Println("cred", FormatJson(cred))
+	fmt.Println("getScopedResource", getScopedResource(resource))
+
 	confidentialClient, err := confidential.New(
-		fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID),
+		fmt.Sprintf("%s%s/oauth2/v2.0/token", AuthorityHost, TenantID),
 		clientID,
 		cred,
 	)
@@ -194,4 +204,9 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(_ string) (*amq
 
 	return amqpAuth.NewToken(amqpAuth.CBSTokenTypeJWT, wiTokenProvider.aadToken.AccessToken,
 		wiTokenProvider.aadToken.ExpiresOn), nil
+}
+
+func FormatJson(class interface{}) string {
+	s, _ := json.MarshalIndent(class, "", "\t")
+	return string(s)
 }

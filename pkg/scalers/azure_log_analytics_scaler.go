@@ -316,14 +316,16 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 		tokenInfo, _ = getTokenFromCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider))
 	}
 
-	s.logger.V(1).Info("podIdentifier", s.metadata.podIdentity.Provider)
-	s.logger.V(1).Info("getAccessToken", FormatJson(tokenInfo))
+	s.logger.V(1).Info("ssr", "getAccessToken podIdentity", s.metadata.podIdentity)
+	s.logger.V(1).Info("ssr", "tokenInfo", tokenInfo)
 
 	if currentTimeSec+30 > tokenInfo.ExpiresOn {
 		newTokenInfo, err := s.refreshAccessToken(ctx)
 		if err != nil {
 			return tokenData{}, err
 		}
+
+		s.logger.V(1).Info("ssr", "newTokenInfo", newTokenInfo)
 
 		switch s.metadata.podIdentity.Provider {
 		case "", kedav1alpha1.PodIdentityProviderNone:
@@ -449,6 +451,7 @@ func parseTableValueToFloat64(value interface{}, dataType string) (float64, erro
 }
 
 func (s *azureLogAnalyticsScaler) refreshAccessToken(ctx context.Context) (tokenData, error) {
+	s.logger.V(1).Info("ssr", "refreshAccessToken podIdentity", s.metadata.podIdentity)
 	tokenInfo, err := s.getAuthorizationToken(ctx)
 	if err != nil {
 		return tokenData{}, err
@@ -479,14 +482,19 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 	var err error
 	var tokenInfo tokenData
 
+	s.logger.V(1).Info("ssr", "getAuthorizationToken podIdentity", s.metadata.podIdentity)
+	s.logger.V(1).Info("ssr", "getAuthorizationToken logAnalyticsResourceURL", s.metadata.logAnalyticsResourceURL)
+
 	switch s.metadata.podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+
 		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, s.metadata.podIdentity.IdentityID, s.metadata.logAnalyticsResourceURL)
+
+		s.logger.V(1).Info("ssr", "getAuthorizationToken aadToken", aadToken)
 		if err != nil {
 			return tokenData{}, nil
 		}
 
-		s.logger.V(1).Info("getAuthorizationToken", FormatJson(aadToken))
 		expiresOn := aadToken.ExpiresOnTimeObject.Unix()
 		if err != nil {
 			return tokenData{}, nil

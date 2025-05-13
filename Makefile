@@ -29,7 +29,7 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
-BUILD_PLATFORMS ?= linux/amd64,linux/arm64
+BUILD_PLATFORMS ?= linux/amd64
 OUTPUT_TYPE     ?= registry
 
 GIT_VERSION ?= $(shell git describe --always --abbrev=7)
@@ -198,7 +198,7 @@ run: manifests generate ## Run a controller from your host.
 	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./cmd/operator/main.go $(ARGS)
 
 docker-build: ## Build docker images with the KEDA Operator and Metrics Server.
-	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	DOCKER_BUILDKIT=1 docker buildx build  --platform=${BUILD_PLATFORMS}  . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 	# DOCKER_BUILDKIT=1 docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 	# DOCKER_BUILDKIT=1 docker build -f Dockerfile.webhooks -t ${IMAGE_WEBHOOKS} . --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
